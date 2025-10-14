@@ -1,6 +1,6 @@
 {
   "name": "@boooply/ai-interviews-sdk",
-  "version": "1.0.7",
+  "version": "1.0.8",
   "description": "Boooply AI Interviews Integration SDK",
   "main": "index.js",
   "types": "index.d.ts",
