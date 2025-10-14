@@ -6,7 +6,7 @@
   "types": "index.d.ts",
   "repository": {
     "type": "git",
-    "url": "git+https://github.com/yourorg/boooply-ai-interviews-sdk.git"
+    "url": "git+https://github.com/55studio/boooply-ai-interviews-sdk.git"
   },
   "scripts": {
     "build": "tsc"
@@ -18,7 +18,7 @@
     "sdk",
     "integration"
   ],
-  "author": "Boooply",
+  "author": "Can Mehmet<can@55.studio>",
   "license": "MIT",
   "dependencies": {
     "axios": "^1.12.2"

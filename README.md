@@ -1,26 +1,19 @@
-# Boooply Meetings SDK
+# Boooply AI Interviews SDK
 
-Official JavaScript/Node.js SDK for integrating with Boooply Meetings API.
+Official JavaScript/Node.js SDK for integrating with Boooply AI Interviews API.
 
 ## Installation
 
 ```bash
-npm install @boooply/sdk
+npm install @boooply/ai-interviews-sdk
 # or
-yarn add @boooply/sdk
-```
-
-For local development (not yet published to npm):
-
-```bash
-# In your project
-npm install file:../boooply-meetings/backend/sdk
+yarn add @boooply/ai-interviews-sdk
 ```
 
 ## Quick Start
 
 ```javascript
-const { BoooplyClient, mapTalentFlowParticipant } = require('@boooply/sdk');
+const { BoooplyClient } = require('boooply-ai-interviews-sdk');
 
 // Initialize the client
 const boooply = new BoooplyClient({
@@ -34,23 +27,21 @@ const meeting = await boooply.createMeeting({
   description: 'Technical interview for React position',
   scheduledAt: new Date('2025-01-15T14:00:00Z').toISOString(),
   hostEmail: 'recruiter@company.com',
-  organizationId: '12345', // Your TalentFlow/external org ID
+  organizationId: '12345',
   participants: [
     {
       name: 'John Doe',
       email: 'john@example.com',
       role: 'CANDIDATE',
       externalUserId: '67890',
-      authProvider: 'TALENTFLOW',
-      externalRole: 'JOBSEEKER'
+      authProvider: 'NATIVE'
     },
     {
       name: 'Jane Smith',
       email: 'jane@company.com',
       role: 'INTERVIEWER',
       externalUserId: '54321',
-      authProvider: 'TALENTFLOW',
-      externalRole: 'SENIOR_RECRUITER'
+      authProvider: 'NATIVE'
     }
   ],
   jobTitle: 'Frontend Developer',
@@ -63,52 +54,36 @@ console.log('Join URL:', `https://meetings.boooply.com/join/${meeting.meetingCod
 
 ## Participant Mappers
 
-The SDK includes helper functions to map users from different platforms to Boooply's participant format:
+The SDK includes helper functions to map users from different platforms to Boooply's participant format.
 
-### TalentFlow Integration
+### Generic Participant Mapping
 
 ```javascript
-const { mapTalentFlowParticipant } = require('@boooply/sdk');
+const { mapGenericParticipant } = require('boooply-ai-interviews-sdk');
 
-// TalentFlow user object
-const tfUser = {
+const user = {
   name: 'John Doe',
   email: 'john@example.com',
-  type: 'JOBSEEKER', // TalentFlow role
-  userId: '1234567890' // TalentFlow snowflake ID
+  role: 'CANDIDATE',
+  externalUserId: '1234567890',
+  authProvider: 'YOUR_PLATFORM',
+  externalRole: 'USER'
 };
 
-// Convert to Boooply format
-const participant = mapTalentFlowParticipant(tfUser);
-// Result:
-// {
-//   name: 'John Doe',
-//   email: 'john@example.com',
-//   role: 'CANDIDATE', // Mapped from JOBSEEKER
-//   externalUserId: '1234567890',
-//   authProvider: 'TALENTFLOW',
-//   externalRole: 'JOBSEEKER'
-// }
+const participant = mapGenericParticipant(user);
 ```
-
-**TalentFlow Role Mapping:**
-- `JOBSEEKER` → `CANDIDATE`
-- `INTERVIEWER` → `INTERVIEWER`
-- `COMPANY_OWNER` → `HOST`
-- `SENIOR_RECRUITER` → `CO_HOST`
-- `RECRUITER` → `INTERVIEWER`
 
 ### Google Integration
 
 ```javascript
-const { mapGoogleParticipant } = require('@boooply/sdk');
+const { mapGoogleParticipant } = require('boooply-ai-interviews-sdk');
 
 const googleUser = {
   name: 'Jane Smith',
   email: 'jane@gmail.com',
   id: 'google-user-id-123',
   picture: 'https://...',
-  role: 'INTERVIEWER' // Optional, defaults to INTERVIEWER
+  role: 'INTERVIEWER'
 };
 
 const participant = mapGoogleParticipant(googleUser);
@@ -117,7 +92,7 @@ const participant = mapGoogleParticipant(googleUser);
 ### Microsoft Teams Integration
 
 ```javascript
-const { mapMicrosoftParticipant } = require('@boooply/sdk');
+const { mapMicrosoftParticipant } = require('boooply-ai-interviews-sdk');
 
 const msUser = {
   displayName: 'Bob Johnson',
@@ -133,14 +108,14 @@ const participant = mapMicrosoftParticipant(msUser);
 
 ### `createMeeting(data)`
 
-Create a new regular (human) meeting.
+Create a new meeting.
 
 **Parameters:**
 - `title` (string): Meeting title
 - `description` (string, optional): Meeting description
 - `scheduledAt` (string): ISO 8601 datetime
 - `hostEmail` (string): Host's email address
-- `organizationId` (string): External organization ID
+- `organizationId` (string): Your organization ID
 - `participants` (array): Array of participant objects
 - `jobTitle` (string, optional): Job title for transcription context
 - `skills` (array, optional): Skills array for transcription context
@@ -163,7 +138,6 @@ const aiInterview = await boooply.createAIInterview({
   interviewContext: {
     type: 'TECHNICAL',
     questions: [...],
-    // Additional context
   },
   organizationId: '12345'
 });
@@ -187,7 +161,7 @@ const newParticipant = await boooply.addParticipant('abc-def-ghi', {
   email: 'late@example.com',
   role: 'OBSERVER',
   externalUserId: '99999',
-  authProvider: 'TALENTFLOW'
+  authProvider: 'NATIVE'
 });
 
 console.log('Join token:', newParticipant.joinToken);
@@ -199,11 +173,6 @@ Get all features enabled for your organization.
 
 ```javascript
 const features = await boooply.getOrganizationFeatures();
-// [
-//   { featureType: 'LIVE_TRANSCRIPTION', isEnabled: true, ... },
-//   { featureType: 'AI_INTERVIEW', isEnabled: true, ... },
-//   ...
-// ]
 ```
 
 ### `hasFeature(featureType)`
@@ -253,7 +222,7 @@ await boooply.endMeeting('abc-def-ghi');
 The SDK includes JSDoc type definitions that work with TypeScript and modern IDEs:
 
 ```typescript
-import { BoooplyClient, ParticipantData, Meeting } from '@boooply/sdk';
+import { BoooplyClient, ParticipantData, Meeting } from 'boooply-ai-interviews-sdk';
 
 const client: BoooplyClient = new BoooplyClient({
   apiKey: process.env.BOOOPLY_API_KEY!,
@@ -265,7 +234,7 @@ const participant: ParticipantData = {
   email: 'john@example.com',
   role: 'CANDIDATE',
   externalUserId: '12345',
-  authProvider: 'TALENTFLOW'
+  authProvider: 'NATIVE'
 };
 ```
 
@@ -278,49 +247,6 @@ try {
   console.error('Failed to create meeting:', error.message);
   console.error('Status:', error.status); // HTTP status code
   console.error('Details:', error.data); // Response data
-}
-```
-
-## Complete Example: TalentFlow Integration
-
-```javascript
-const { BoooplyClient, mapTalentFlowParticipant } = require('@boooply/sdk');
-
-class InterviewScheduler {
-  constructor() {
-    this.boooply = new BoooplyClient({
-      apiKey: process.env.BOOOPLY_API_KEY,
-      baseUrl: process.env.BOOOPLY_API_URL
-    });
-  }
-
-  async scheduleInterview(interviewData) {
-    // Map TalentFlow participants
-    const participants = interviewData.participants.map(mapTalentFlowParticipant);
-
-    // Create meeting
-    const meeting = await this.boooply.createMeeting({
-      title: `${interviewData.jobTitle} Interview`,
-      description: interviewData.description,
-      scheduledAt: interviewData.scheduledAt,
-      hostEmail: interviewData.hostEmail,
-      organizationId: interviewData.companyId.toString(),
-      participants,
-      jobTitle: interviewData.jobTitle,
-      skills: interviewData.requiredSkills
-    });
-
-    // Generate join URLs for each participant
-    const joinUrls = meeting.participants.map(p => ({
-      email: p.email,
-      joinUrl: `${process.env.FRONTEND_URL}/join/${meeting.meetingCode}?token=${p.joinToken}`
-    }));
-
-    return {
-      meetingCode: meeting.meetingCode,
-      joinUrls
-    };
-  }
 }
 ```
 
