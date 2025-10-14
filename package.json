@@ -1,0 +1,30 @@
+{
+  "name": "@boooply/ai-interviews-sdk",
+  "version": "1.0.0",
+  "description": "Boooply AI Interviews Integration SDK",
+  "main": "index.js",
+  "types": "index.d.ts",
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/yourorg/boooply-ai-interviews-sdk.git"
+  },
+  "scripts": {
+    "build": "tsc"
+  },
+  "keywords": [
+    "boooply",
+    "ai-interviews",
+    "meetings",
+    "sdk",
+    "integration"
+  ],
+  "author": "Boooply",
+  "license": "MIT",
+  "dependencies": {
+    "axios": "^1.12.2"
+  },
+  "devDependencies": {
+    "@types/node": "^20.0.0",
+    "typescript": "^5.0.0"
+  }
+}
