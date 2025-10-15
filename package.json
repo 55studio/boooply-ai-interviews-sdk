@@ -1,6 +1,6 @@
 {
   "name": "@boooply/ai-interviews-sdk",
-  "version": "1.0.8",
+  "version": "1.1.0",
   "description": "Boooply AI Interviews Integration SDK",
   "main": "index.js",
   "types": "index.d.ts",
@@ -9,7 +9,10 @@
     "url": "git+https://github.com/55studio/boooply-ai-interviews-sdk.git"
   },
   "scripts": {
-    "build": "tsc"
+    "build": "tsc",
+    "test": "NODE_TLS_REJECT_UNAUTHORIZED=0 node test/runner.js",
+    "test:platform": "TEST_MODE=platform NODE_TLS_REJECT_UNAUTHORIZED=0 node test/runner.js",
+    "test:organization": "TEST_MODE=organization NODE_TLS_REJECT_UNAUTHORIZED=0 node test/runner.js"
   },
   "keywords": [
     "boooply",
@@ -25,6 +28,7 @@
   },
   "devDependencies": {
     "@types/node": "^20.0.0",
+    "dotenv": "^17.2.3",
     "typescript": "^5.0.0"
   }
 }
