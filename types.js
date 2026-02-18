@@ -3,7 +3,7 @@
  */
 
 /**
- * @typedef {'HOST' | 'CO_HOST' | 'INTERVIEWER' | 'CANDIDATE' | 'OBSERVER'} ParticipantRole
+ * @typedef {'HOST' | 'CO_HOST' | 'INTERVIEWER' | 'CANDIDATE'} ParticipantRole
  */
 
 /**
@@ -19,9 +19,9 @@
  * @property {string} name - Participant's full name
  * @property {string} email - Participant's email address
  * @property {ParticipantRole} role - Participant's meeting role
- * @property {string} externalUserId - External system user ID (e.g., TalentFlow snowflake ID)
+ * @property {string} externalUserId - External system user ID
  * @property {AuthProvider} authProvider - Authentication provider
- * @property {string} [externalRole] - Original role from external system (e.g., 'JOBSEEKER', 'COMPANY_OWNER')
+ * @property {string} [externalRole] - Original role from external system
  * @property {string} [avatarUrl] - Optional avatar image URL
  */
 
@@ -31,7 +31,7 @@
  * @property {string} [description] - Optional meeting description
  * @property {string} scheduledAt - ISO 8601 datetime string
  * @property {string} hostEmail - Email of the meeting host
- * @property {string} organizationId - External organization ID (e.g., TalentFlow recruiterCompanyId)
+ * @property {string} organizationId - External organization ID
  * @property {ParticipantData[]} participants - Array of meeting participants
  * @property {string} [jobTitle] - Job title for context (used in transcription)
  * @property {string[]} [skills] - Array of skills for context
@@ -42,6 +42,7 @@
  * @typedef {Object} CreateAIInterviewRequest
  * @property {string} candidateEmail - Candidate's email address
  * @property {string} candidateName - Candidate's full name
+ * @property {string} durationMinutes - Duration of the interview in minutes
  * @property {string} [candidateCV] - Candidate's resume/CV text
  * @property {string} jobRole - Job position title
  * @property {string} companyName - Company/organization name
@@ -81,6 +82,31 @@
  * @property {number} [limit] - Usage limit (e.g., max AI interviews per month)
  * @property {number} usageCount - Current usage count
  * @property {string} [expiresAt] - ISO 8601 datetime when feature expires
+ */
+
+/**
+ * @typedef {Object} CancelMeetingResponse
+ * @property {boolean} success - Whether cancellation was successful
+ * @property {Meeting} meeting - Updated meeting data
+ */
+
+/**
+ * @typedef {Object} RescheduleMeetingRequest
+ * @property {string|Date} newScheduledAt - New scheduled date/time
+ * @property {number} [newDurationMinutes] - Optional new duration in minutes
+ * @property {string} [reason] - Optional rescheduling reason
+ */
+
+/**
+ * @typedef {Object} RescheduleMeetingResponse
+ * @property {boolean} success - Whether rescheduling was successful
+ * @property {Meeting} meeting - Updated meeting data
+ */
+
+/**
+ * @typedef {Object} DeleteMeetingResponse
+ * @property {boolean} success - Whether deletion was successful
+ * @property {string} message - Confirmation message
  */
 
 module.exports = {};

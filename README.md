@@ -10,6 +10,52 @@ npm install @boooply/ai-interviews-sdk
 yarn add @boooply/ai-interviews-sdk
 ```
 
+## Authentication
+
+Before using the SDK, you need to obtain an API key from Boooply. The SDK uses Bearer token authentication and automatically includes your API key in the `Authorization` header for all requests.
+
+### Getting an API Key
+
+Contact Boooply support or use the server-to-server authentication endpoint to obtain your organization's API key. Store this key securely (e.g., in environment variables).
+
+```javascript
+// Example: Store in .env file
+// BOOOPLY_API_KEY=boooply_test_xxxxxxxxxxxxx
+// BOOOPLY_BASE_URL=https://api.meetings.boooply.com
+// BOOOPLY_ORG_ID=your-organization-id (optional, for multi-tenant platforms)
+```
+
+### Multi-Tenant vs Single-Tenant
+
+The SDK supports both multi-tenant and single-tenant scenarios:
+
+**Multi-Tenant Platform (multiple organizations):**
+```javascript
+// Platform with multiple organizations - provide organizationId
+const client = new BoooplyClient({
+  apiKey: process.env.BOOOPLY_PLATFORM_KEY,  // or tenant key
+  baseUrl: process.env.BOOOPLY_BASE_URL,
+  organizationId: currentOrganization.snowID  // Specify which org
+});
+```
+
+**Single-Tenant Platform (standalone application):**
+```javascript
+// Single organization platform - organizationId is optional
+const client = new BoooplyClient({
+  apiKey: process.env.BOOOPLY_API_KEY,  // tenant key
+  baseUrl: process.env.BOOOPLY_BASE_URL
+  // No organizationId needed - Boooply creates a default organization automatically
+});
+```
+
+**How Organization IDs Work:**
+- **Platform keys**: If you don't provide `organizationId`, Boooply creates a default organization for your platform
+- **Tenant keys**: Boooply tries to extract organization ID from:
+  1. The API key's metadata (for multi-tenant platforms)
+  2. The `organizationId` parameter you provide (optional)
+  3. Auto-creates a default organization (for single-tenant applications)
+
 ## Quick Start
 
 ```javascript
@@ -17,8 +63,9 @@ const { BoooplyClient } = require('boooply-ai-interviews-sdk');
 
 // Initialize the client
 const boooply = new BoooplyClient({
-  apiKey: 'your-organization-api-key',
-  baseUrl: 'https://api.meetings.boooply.com'
+  apiKey: 'your-organization-api-key',  // Required: Your platform or org API key
+  baseUrl: 'https://api.meetings.boooply.com',  // Required: Boooply API URL
+  organizationId: 'org-snowflake-id'  // Optional: For multi-tenant platforms
 });
 
 // Create a meeting
@@ -159,7 +206,7 @@ Add a participant to an existing meeting.
 const newParticipant = await boooply.addParticipant('abc-def-ghi', {
   name: 'Late Joiner',
   email: 'late@example.com',
-  role: 'OBSERVER',
+  role: 'INTERVIEWER',
   externalUserId: '99999',
   authProvider: 'NATIVE'
 });
@@ -216,6 +263,66 @@ End/cancel a meeting.
 ```javascript
 await boooply.endMeeting('abc-def-ghi');
 ```
+
+## Platform Provider Methods
+
+These methods are for multi-tenant platforms who integrate Boooply for multiple organizations.
+
+### `BoooplyClient.createOrganizationApiKey(config, data)` (Static)
+
+Create an organization-specific API key for a platform's sub-organization.
+
+**When to use**: When you're a multi-tenant platform and need to provision individual organizations with their own Boooply credentials.
+
+```javascript
+const { BoooplyClient } = require('@boooply/ai-interviews-sdk');
+
+// Platform backend calls this when an organization clicks "Connect to Boooply"
+const result = await BoooplyClient.createOrganizationApiKey(
+  {
+    baseUrl: 'https://api.meetings.boooply.com',
+    platformKey: process.env.BOOOPLY_PLATFORM_KEY  // Your platform's master key
+  },
+  {
+    userId: '12345',                    // User ID from your platform
+    userEmail: 'admin@organization.com',
+    userName: 'Jane Admin',
+    organizationId: 'org_7234567890',   // Organization's snowflake ID
+    organizationName: 'Acme Corporation'
+  }
+);
+
+// Store the returned API key for this organization
+console.log(result.apiKey);  // 'boooply_tenant_test_xxxxx' - unique per organization
+```
+
+**Config Parameters:**
+- `baseUrl` (string): Boooply API URL
+- `platformKey` (string): Your platform-level API key (contact Boooply to obtain)
+
+**Data Parameters:**
+- `userId` (string): User ID from your platform
+- `userEmail` (string): User email
+- `userName` (string, optional): User name
+- `organizationId` (string): Organization's unique ID (snowflake/external ID, not internal DB ID)
+- `organizationName` (string, optional): Organization name
+
+**Returns:**
+```javascript
+{
+  success: true,
+  apiKey: 'boooply_tenant_test_xxxxx',           // Store this for the organization
+  userId: '12345',
+  userEmail: 'admin@organization.com',
+  organizationId: 'org_7234567890',
+  organizationName: 'Acme Corporation',
+  meetingBaseUrl: 'https://meetings.boooply.com',
+  apiBaseUrl: 'https://api.meetings.boooply.com',
+  message: 'API key created successfully'
+}
+```
+
+**Security Note:** This method should only be called from your backend server, never from client-side code. The platform key grants elevated privileges.
 
 ## TypeScript Support
 
