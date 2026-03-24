@@ -1,6 +1,6 @@
 {
   "name": "@boooply/ai-interviews-sdk",
-  "version": "1.7.0",
+  "version": "2.1.0",
   "description": "Boooply AI Interviews Integration SDK",
   "main": "index.js",
   "types": "index.d.ts",
@@ -10,7 +10,10 @@
   },
   "scripts": {
     "build": "tsc",
-    "test": "NODE_TLS_REJECT_UNAUTHORIZED=0 node test/runner.js",
+    "test": "node test/sdk.test.js",
+    "test:e2e": "bash test/setup-sdk-test.sh",
+    "test:e2e:quick": "NODE_TLS_REJECT_UNAUTHORIZED=0 node test/test-e2e.js",
+    "test:legacy": "NODE_TLS_REJECT_UNAUTHORIZED=0 node test/runner.js",
     "test:platform": "TEST_MODE=platform NODE_TLS_REJECT_UNAUTHORIZED=0 node test/runner.js",
     "test:organization": "TEST_MODE=organization NODE_TLS_REJECT_UNAUTHORIZED=0 node test/runner.js"
   },
