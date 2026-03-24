@@ -1,361 +1,639 @@
 # Boooply AI Interviews SDK
 
-Official JavaScript/Node.js SDK for integrating with Boooply AI Interviews API.
+Official JavaScript/Node.js SDK for the [Boooply AI Interviews](https://boooply.com) API.
 
 ## Installation
 
 ```bash
 npm install @boooply/ai-interviews-sdk
-# or
-yarn add @boooply/ai-interviews-sdk
 ```
-
-## Authentication
-
-Before using the SDK, you need to obtain an API key from Boooply. The SDK uses Bearer token authentication and automatically includes your API key in the `Authorization` header for all requests.
-
-### Getting an API Key
-
-Contact Boooply support or use the server-to-server authentication endpoint to obtain your organization's API key. Store this key securely (e.g., in environment variables).
-
-```javascript
-// Example: Store in .env file
-// BOOOPLY_API_KEY=boooply_test_xxxxxxxxxxxxx
-// BOOOPLY_BASE_URL=https://api.meetings.boooply.com
-// BOOOPLY_ORG_ID=your-organization-id (optional, for multi-tenant platforms)
-```
-
-### Multi-Tenant vs Single-Tenant
-
-The SDK supports both multi-tenant and single-tenant scenarios:
-
-**Multi-Tenant Platform (multiple organizations):**
-```javascript
-// Platform with multiple organizations - provide organizationId
-const client = new BoooplyClient({
-  apiKey: process.env.BOOOPLY_PLATFORM_KEY,  // or tenant key
-  baseUrl: process.env.BOOOPLY_BASE_URL,
-  organizationId: currentOrganization.snowID  // Specify which org
-});
-```
-
-**Single-Tenant Platform (standalone application):**
-```javascript
-// Single organization platform - organizationId is optional
-const client = new BoooplyClient({
-  apiKey: process.env.BOOOPLY_API_KEY,  // tenant key
-  baseUrl: process.env.BOOOPLY_BASE_URL
-  // No organizationId needed - Boooply creates a default organization automatically
-});
-```
-
-**How Organization IDs Work:**
-- **Platform keys**: If you don't provide `organizationId`, Boooply creates a default organization for your platform
-- **Tenant keys**: Boooply tries to extract organization ID from:
-  1. The API key's metadata (for multi-tenant platforms)
-  2. The `organizationId` parameter you provide (optional)
-  3. Auto-creates a default organization (for single-tenant applications)
 
 ## Quick Start
 
 ```javascript
-const { BoooplyClient } = require('boooply-ai-interviews-sdk');
+const { BoooplyClient } = require('@boooply/ai-interviews-sdk');
 
-// Initialize the client
-const boooply = new BoooplyClient({
-  apiKey: 'your-organization-api-key',  // Required: Your platform or org API key
-  baseUrl: 'https://api.meetings.boooply.com',  // Required: Boooply API URL
-  organizationId: 'org-snowflake-id'  // Optional: For multi-tenant platforms
+const client = new BoooplyClient({
+  apiKey: process.env.BOOOPLY_API_KEY,       // Required — bply_... format
+  baseUrl: process.env.BOOOPLY_BASE_URL,     // Required — e.g. https://api.meetings.boooply.com
+  timeout: 30000,                            // Optional — request timeout in ms
 });
 
-// Create a meeting
-const meeting = await boooply.createMeeting({
-  title: 'Frontend Developer Interview',
-  description: 'Technical interview for React position',
-  scheduledAt: new Date('2025-01-15T14:00:00Z').toISOString(),
-  hostEmail: 'recruiter@company.com',
-  organizationId: '12345',
-  participants: [
-    {
-      name: 'John Doe',
-      email: 'john@example.com',
-      role: 'CANDIDATE',
-      externalUserId: '67890',
-      authProvider: 'NATIVE'
-    },
-    {
-      name: 'Jane Smith',
-      email: 'jane@company.com',
-      role: 'INTERVIEWER',
-      externalUserId: '54321',
-      authProvider: 'NATIVE'
-    }
-  ],
-  jobTitle: 'Frontend Developer',
-  skills: ['React', 'TypeScript', 'Node.js']
+// Create an AI interview
+const interview = await client.interviews.create({
+  type: 'ai',
+  jobRole: 'Senior Frontend Engineer',
+  candidate: { name: 'Jane Doe', email: 'jane@example.com' },
+  skills: ['React', 'TypeScript'],
+  durationMinutes: 20,
 });
 
-console.log('Meeting created:', meeting.meetingCode);
-console.log('Join URL:', `https://meetings.boooply.com/join/${meeting.meetingCode}`);
+console.log('Interview created:', interview.meetingCode);
+console.log('Join URL:', interview.url);
 ```
+
+## Authentication
+
+The SDK uses Bearer token authentication. Your API key is automatically included in all requests.
+
+### Getting an API Key
+
+Contact Boooply or use the platform onboarding endpoint (see [Platform Providers](#platform-providers)).
+
+```bash
+# .env
+BOOOPLY_API_KEY=bply_org_xxxxxxxxxxxxx
+BOOOPLY_BASE_URL=https://api.meetings.boooply.com
+```
+
+> **Security:** Store your API key in environment variables. Never expose it in client-side code.
+
+---
+
+## API Reference
+
+The SDK uses a **namespaced API** pattern:
+
+```
+client.interviews.*    — Create, list, manage interviews
+client.ai.*            — AI-powered features
+client.organization.*  — Organization info
+```
+
+---
+
+### `client.interviews`
+
+#### `interviews.create(data)` — Create an interview
+
+A single unified method for creating AI interviews, human interviews, and team meetings.
+
+**Parameters:**
+
+| Parameter | Type | Required | Description |
+|-----------|------|----------|-------------|
+| `type` | `'ai' \| 'human' \| 'team'` | Yes | Interview type |
+| `jobRole` | `string` | Yes (ai/human) | Job role or title |
+| `candidate` | `{ name, email }` | Yes (ai) | Candidate info |
+| `participants` | `Array<{ name, email, role }>` | Yes (human/team) | Participant list |
+| `scheduledAt` | `string` | No | ISO 8601 datetime (required for `FIXED` mode) |
+| `schedulingMode` | `'IMMEDIATE' \| 'FIXED' \| 'CANDIDATE_PICKS'` | No | Scheduling mode (see [Scheduling Modes](#scheduling-modes)) |
+| `availableSlots` | `Array<{ start, end }>` | No | Time slots to offer the candidate (used with `CANDIDATE_PICKS` mode, max 50) |
+| `durationMinutes` | `number` | No | Duration (default: 30, min: 5) |
+| `skills` | `string[]` | No | Skills to evaluate |
+| `seniority` | `'JUNIOR' \| 'MID' \| 'SENIOR' \| 'LEAD' \| 'PRINCIPAL'` | No | Seniority level |
+| `department` | `string` | No | Department name |
+| `jobDescription` | `string` | No | Full job description |
+| `candidateCV` | `string` | No | CV/resume text |
+| `questions` | `string[]` | No | Custom interview questions |
+| `aiGenerate` | `boolean` | No | Auto-generate questions with AI |
+| `workSetup` | `'REMOTE' \| 'ONSITE' \| 'HYBRID'` | No | Work arrangement |
+| `employmentType` | `'FULL_TIME' \| 'PART_TIME' \| 'CONTRACT'` | No | Employment type |
+| `evaluationFocus` | `string` | No | `'knowledge' \| 'balanced' \| 'communication' \| 'problem_solving' \| 'culture'` |
+| `companyName` | `string` | No | Company name (defaults to your organization name). Useful for agencies posting for multiple clients |
+| `sendCandidateFeedback` | `boolean` | No | Send AI-generated feedback email to candidate after evaluation |
+| `externalJobId` | `string` | No | External job/position ID from your ATS |
+
+> **Emails:** When an interview is created, Boooply automatically sends invitation emails to all participants from `noreply@boooply.com`. Candidates receive a join link (or booking link for `CANDIDATE_PICKS` mode), and interviewers receive a separate join link. If `sendCandidateFeedback` is enabled, the candidate also receives an AI-generated feedback email after the evaluation completes.
+
+**Examples:**
+
+```javascript
+// AI Interview — candidate talks to AI interviewer
+const ai = await client.interviews.create({
+  type: 'ai',
+  jobRole: 'Frontend Engineer',
+  candidate: { name: 'Jane Doe', email: 'jane@example.com' },
+  skills: ['React', 'TypeScript', 'CSS'],
+  seniority: 'SENIOR',
+  durationMinutes: 20,
+  aiGenerate: true,
+  evaluationFocus: 'balanced',
+  externalJobId: 'job_123',  // links to your ATS position
+});
+
+// Human Interview — real interviewer + candidate
+const human = await client.interviews.create({
+  type: 'human',
+  jobRole: 'Backend Engineer',
+  scheduledAt: '2026-04-01T14:00:00Z',
+  participants: [
+    { name: 'Jane Doe', email: 'jane@example.com', role: 'CANDIDATE' },
+    { name: 'Bob Smith', email: 'bob@company.com', role: 'INTERVIEWER' },
+  ],
+  skills: ['Node.js', 'PostgreSQL'],
+});
+
+// Human Interview — let candidate pick a time slot
+const flexible = await client.interviews.create({
+  type: 'human',
+  jobRole: 'Product Designer',
+  schedulingMode: 'CANDIDATE_PICKS',
+  participants: [
+    { name: 'Jane Doe', email: 'jane@example.com', role: 'CANDIDATE' },
+    { name: 'Bob Smith', email: 'bob@company.com', role: 'INTERVIEWER' },
+  ],
+  availableSlots: [
+    { start: '2026-04-01T09:00:00Z', end: '2026-04-01T10:00:00Z' },
+    { start: '2026-04-01T14:00:00Z', end: '2026-04-01T15:00:00Z' },
+    { start: '2026-04-02T11:00:00Z', end: '2026-04-02T12:00:00Z' },
+  ],
+  skills: ['Figma', 'Design Systems'],
+});
+// → Candidate receives a booking link to pick one of the offered slots
+
+// Team Meeting — internal meeting with transcription
+const team = await client.interviews.create({
+  type: 'team',
+  scheduledAt: '2026-04-01T10:00:00Z',
+  participants: [
+    { name: 'Alice', email: 'alice@company.com', role: 'HOST' },
+    { name: 'Bob', email: 'bob@company.com', role: 'PARTICIPANT' },
+    { name: 'Carol', email: 'carol@company.com', role: 'PARTICIPANT' },
+  ],
+});
+```
+
+**Returns:**
+
+```javascript
+{
+  meetingCode: 'Boooply-AI-1234567890',
+  url: 'https://meetings.boooply.com/join/Boooply-AI-1234567890',
+  meetingType: 'AI_ONLY',
+  sessionStatus: 'SCHEDULED',
+  participants: [
+    { name: 'Jane Doe', email: 'jane@example.com', role: 'CANDIDATE', joinToken: '...' }
+  ]
+}
+```
+
+---
+
+#### Scheduling Modes
+
+Control when the interview takes place:
+
+| Mode | Behavior | Available for |
+|------|----------|---------------|
+| `IMMEDIATE` | Interview is available to join right away (default for AI interviews) | AI, Human, Team |
+| `FIXED` | Interview is scheduled for a specific `scheduledAt` datetime | AI, Human, Team |
+| `CANDIDATE_PICKS` | Candidate receives a booking link to choose from `availableSlots` | AI, Human only |
+
+> **Note:** `CANDIDATE_PICKS` is not available for team meetings — there is no candidate to send a booking link to. Use `IMMEDIATE` or `FIXED` instead.
+
+**`CANDIDATE_PICKS` flow:**
+
+1. You create the interview with `schedulingMode: 'CANDIDATE_PICKS'` and an `availableSlots` array
+2. The candidate receives an email with a booking link
+3. The candidate picks one of the offered time slots
+4. The interview is confirmed — all participants are notified and calendar events are created
+5. The booking link expires after 7 days if no slot is selected
+
+Each slot in `availableSlots` is an object with `start` and `end` (ISO 8601 strings). You can offer up to 50 slots. Make sure each slot's duration matches the `durationMinutes` value — the booking page displays the time range based on the interview duration.
+
+```javascript
+// 30-minute interview → each slot spans 30 minutes
+await client.interviews.create({
+  type: 'human',
+  jobRole: 'Product Designer',
+  durationMinutes: 30,
+  schedulingMode: 'CANDIDATE_PICKS',
+  participants: [
+    { name: 'Jane', email: 'jane@example.com', role: 'CANDIDATE' },
+    { name: 'Bob', email: 'bob@company.com', role: 'INTERVIEWER' },
+  ],
+  availableSlots: [
+    { start: '2026-04-01T09:00:00Z', end: '2026-04-01T09:30:00Z' },
+    { start: '2026-04-01T14:00:00Z', end: '2026-04-01T14:30:00Z' },
+  ],
+});
+```
+
+> **Tip for ATS integrations:** You have two options for providing time slots:
+> 1. **Pull from Boooply** — Use `getAvailability()` to fetch slots from the interviewer's Google Calendar already connected in Boooply (see below)
+> 2. **Push from your ATS** — Use your own calendar integration and pass `availableSlots` directly
+
+---
+
+#### `interviews.getAvailability(params)` — Get interviewer availability
+
+Fetch available time slots from a team member's Google Calendar connected in Boooply. This lets you pull interviewer availability without building your own calendar integration.
+
+**Parameters:**
+
+| Parameter | Type | Required | Description |
+|-----------|------|----------|-------------|
+| `email` | `string` | Yes | Team member's email address |
+| `durationMinutes` | `number` | No | Slot duration in minutes (default: 30) |
+| `days` | `number` | No | Days ahead to look (default: 14, max: 30) |
+
+**Returns:**
+
+```javascript
+{
+  calendarConnected: true,      // false if user hasn't connected Google Calendar
+  email: 'bob@company.com',
+  durationMinutes: 30,
+  days: 14,
+  slots: [
+    { start: '2026-04-01T09:00:00Z', end: '2026-04-01T09:30:00Z' },
+    { start: '2026-04-01T09:30:00Z', end: '2026-04-01T10:00:00Z' },
+    // ...
+  ],
+  total: 42,
+}
+```
+
+**Example — full scheduling flow:**
+
+```javascript
+// 1. Check interviewer availability from Boooply
+const { calendarConnected, slots } = await client.interviews.getAvailability({
+  email: 'bob@company.com',
+  durationMinutes: 45,
+  days: 7,
+});
+
+if (calendarConnected && slots.length > 0) {
+  // 2a. Use Boooply's calendar data → let candidate pick
+  const interview = await client.interviews.create({
+    type: 'human',
+    jobRole: 'Product Designer',
+    durationMinutes: 45,
+    schedulingMode: 'CANDIDATE_PICKS',
+    participants: [
+      { name: 'Jane Doe', email: 'jane@example.com', role: 'CANDIDATE' },
+      { name: 'Bob Smith', email: 'bob@company.com', role: 'INTERVIEWER' },
+    ],
+    availableSlots: slots,
+  });
+} else {
+  // 2b. Fallback: use your own calendar integration to provide slots
+  const interview = await client.interviews.create({
+    type: 'human',
+    jobRole: 'Product Designer',
+    durationMinutes: 45,
+    schedulingMode: 'CANDIDATE_PICKS',
+    participants: [
+      { name: 'Jane Doe', email: 'jane@example.com', role: 'CANDIDATE' },
+      { name: 'Bob Smith', email: 'bob@company.com', role: 'INTERVIEWER' },
+    ],
+    availableSlots: myCalendarService.getSlots('bob@company.com', 45),
+  });
+}
+```
+
+> If `calendarConnected` is `false`, the user hasn't connected Google Calendar in Boooply. You can either prompt them to connect it, or fall back to your own calendar integration.
+
+---
+
+#### `interviews.getBusyBlocks(params)` — Get calendar busy blocks
+
+Fetch raw busy time blocks from a team member's Google Calendar. Unlike `getAvailability()` which returns computed available slots, this returns the raw busy periods — useful if you want to compute availability using your own logic (e.g., different working hours, custom slot durations, or merging with other calendars).
+
+**Parameters:**
+
+| Parameter | Type | Required | Description |
+|-----------|------|----------|-------------|
+| `email` | `string` | Yes | Team member's email address |
+| `days` | `number` | No | Days ahead to look (default: 14, max: 30) |
+
+**Returns:**
+
+```javascript
+{
+  calendarConnected: true,
+  email: 'bob@company.com',
+  days: 14,
+  timezone: 'Europe/Berlin',
+  busyBlocks: [
+    { start: '2026-04-01T09:00:00Z', end: '2026-04-01T10:00:00Z' },
+    { start: '2026-04-01T13:00:00Z', end: '2026-04-01T14:30:00Z' },
+    // ...
+  ],
+  total: 18,
+}
+```
+
+**Example:**
+
+```javascript
+const { calendarConnected, busyBlocks, timezone } = await client.interviews.getBusyBlocks({
+  email: 'bob@company.com',
+  days: 7,
+});
+
+if (calendarConnected) {
+  // Use busy blocks to compute your own availability
+  const available = myScheduler.findOpenSlots(busyBlocks, {
+    timezone,
+    workingHours: { start: 8, end: 18 },
+    slotDuration: 60,
+  });
+}
+```
+
+> **When to use `getBusyBlocks` vs `getAvailability`:**
+> - Use `getAvailability()` when you want ready-to-use slots (Mon–Fri, 9–5, filtered by duration)
+> - Use `getBusyBlocks()` when you need raw data to compute availability with your own rules
+
+---
+
+#### `interviews.list(params?)` — List interviews
+
+```javascript
+const { interviews, total, page } = await client.interviews.list({
+  status: 'COMPLETED',     // SCHEDULED | ACTIVE | COMPLETED | CANCELLED
+  type: 'AI_ONLY',         // AI_ONLY | HUMAN | HYBRID
+  search: 'frontend',      // search by role, candidate name, email
+  page: 1,
+  limit: 20,
+});
+```
+
+---
+
+#### `interviews.get(meetingCode)` — Get interview details
+
+```javascript
+const interview = await client.interviews.get('Boooply-AI-1234567890');
+
+console.log(interview.sessionStatus);   // 'COMPLETED'
+console.log(interview.meetingType);     // 'AI_ONLY'
+console.log(interview.participants);    // [{ name, email, role, joinToken }]
+```
+
+---
+
+#### `interviews.getTranscript(meetingCode)` — Get transcript
+
+Returns the full conversation transcript after the interview is completed.
+
+```javascript
+const { transcript } = await client.interviews.getTranscript('Boooply-AI-1234567890');
+
+// transcript = [
+//   { speaker: 'AI Interviewer', role: 'AI', content: 'Tell me about...', timestamp: '...' },
+//   { speaker: 'Jane Doe', role: 'CANDIDATE', content: 'I worked on...', timestamp: '...' },
+// ]
+```
+
+---
+
+#### `interviews.getEvaluation(meetingCode)` — Get AI evaluation
+
+Returns AI-generated scores and analysis after the interview is completed.
+
+```javascript
+const evaluation = await client.interviews.getEvaluation('Boooply-AI-1234567890');
+
+// evaluation = {
+//   recommendation: 'PASS',       // PASS | FAIL | REVIEW
+//   overallScore: 82,             // 0-100
+//   communication: 85,
+//   technical: 78,
+//   cultureFit: 90,
+//   questionEvaluations: [...]
+// }
+```
+
+---
+
+#### `interviews.triggerAnalysis(meetingCode)` — Re-run AI analysis
+
+Triggers (or re-triggers) AI analysis on a completed interview.
+
+```javascript
+await client.interviews.triggerAnalysis('Boooply-AI-1234567890');
+```
+
+---
+
+#### `interviews.addParticipant(meetingCode, data)` — Add participant
+
+```javascript
+const result = await client.interviews.addParticipant('Boooply-AI-1234567890', {
+  participants: [
+    { name: 'Late Joiner', email: 'late@company.com', role: 'INTERVIEWER' }
+  ]
+});
+```
+
+---
+
+#### `interviews.reschedule(meetingCode, data)` — Reschedule
+
+```javascript
+await client.interviews.reschedule('Boooply-AI-1234567890', {
+  scheduledAt: '2026-04-05T14:00:00Z',
+  durationMinutes: 30,
+  reason: 'Candidate requested new time',
+});
+```
+
+---
+
+#### `interviews.cancel(meetingCode, reason?)` — Cancel
+
+```javascript
+await client.interviews.cancel('Boooply-AI-1234567890', 'Position filled');
+```
+
+---
+
+#### `interviews.delete(meetingCode)` — Delete permanently
+
+```javascript
+await client.interviews.delete('Boooply-AI-1234567890');
+// ⚠️ This is irreversible
+```
+
+---
+
+### `client.ai`
+
+#### `ai.generateJobDescription(data)` — Generate job description with AI
+
+```javascript
+const { jobDescription } = await client.ai.generateJobDescription({
+  jobRole: 'Senior Frontend Engineer',
+  department: 'Engineering',
+  skills: ['React', 'TypeScript', 'GraphQL'],
+  seniority: 'SENIOR',
+  workSetup: 'REMOTE',
+  employmentType: 'FULL_TIME',
+});
+```
+
+---
+
+### `client.organization`
+
+#### `organization.get()` — Get organization details
+
+```javascript
+const org = await client.organization.get();
+console.log(org.name, org.slug);
+```
+
+---
 
 ## Participant Mappers
 
-The SDK includes helper functions to map users from different platforms to Boooply's participant format.
-
-### Generic Participant Mapping
+Helper functions to convert users from external platforms into Boooply's participant format.
 
 ```javascript
-const { mapGenericParticipant } = require('boooply-ai-interviews-sdk');
-
-const user = {
-  name: 'John Doe',
-  email: 'john@example.com',
-  role: 'CANDIDATE',
-  externalUserId: '1234567890',
-  authProvider: 'YOUR_PLATFORM',
-  externalRole: 'USER'
-};
-
-const participant = mapGenericParticipant(user);
+const {
+  mapGoogleParticipant,
+  mapMicrosoftParticipant,
+  mapGenericParticipant,
+} = require('@boooply/ai-interviews-sdk');
 ```
 
-### Google Integration
+### Google
 
 ```javascript
-const { mapGoogleParticipant } = require('boooply-ai-interviews-sdk');
-
-const googleUser = {
+const participant = mapGoogleParticipant({
   name: 'Jane Smith',
   email: 'jane@gmail.com',
   id: 'google-user-id-123',
   picture: 'https://...',
-  role: 'INTERVIEWER'
-};
-
-const participant = mapGoogleParticipant(googleUser);
+  role: 'INTERVIEWER',       // optional, defaults to INTERVIEWER
+});
 ```
 
-### Microsoft Teams Integration
+### Microsoft
 
 ```javascript
-const { mapMicrosoftParticipant } = require('boooply-ai-interviews-sdk');
-
-const msUser = {
+const participant = mapMicrosoftParticipant({
   displayName: 'Bob Johnson',
   mail: 'bob@company.com',
   id: 'ms-user-id-456',
-  role: 'HOST'
-};
-
-const participant = mapMicrosoftParticipant(msUser);
-```
-
-## API Methods
-
-### `createMeeting(data)`
-
-Create a new meeting.
-
-**Parameters:**
-- `title` (string): Meeting title
-- `description` (string, optional): Meeting description
-- `scheduledAt` (string): ISO 8601 datetime
-- `hostEmail` (string): Host's email address
-- `organizationId` (string): Your organization ID
-- `participants` (array): Array of participant objects
-- `jobTitle` (string, optional): Job title for transcription context
-- `skills` (array, optional): Skills array for transcription context
-- `meetingType` (string, optional): 'HUMAN', 'AI_ONLY', or 'HYBRID'
-
-**Returns:** Meeting object with `meetingCode` and participant `joinToken`s
-
-### `createAIInterview(data)`
-
-Create an AI-powered interview meeting.
-
-```javascript
-const aiInterview = await boooply.createAIInterview({
-  candidateEmail: 'candidate@example.com',
-  candidateName: 'John Doe',
-  candidateCV: 'Resume text...',
-  jobRole: 'Senior Backend Engineer',
-  companyName: 'Acme Corp',
-  scheduledAt: new Date('2025-01-15T14:00:00Z').toISOString(),
-  interviewContext: {
-    type: 'TECHNICAL',
-    questions: [...],
-  },
-  organizationId: '12345'
+  role: 'HOST',              // optional, defaults to INTERVIEWER
 });
 ```
 
-### `getMeeting(meetingCode)`
-
-Retrieve meeting details by meeting code.
+### Generic
 
 ```javascript
-const meeting = await boooply.getMeeting('abc-def-ghi');
-```
-
-### `addParticipant(meetingCode, participant)`
-
-Add a participant to an existing meeting.
-
-```javascript
-const newParticipant = await boooply.addParticipant('abc-def-ghi', {
-  name: 'Late Joiner',
-  email: 'late@example.com',
-  role: 'INTERVIEWER',
-  externalUserId: '99999',
-  authProvider: 'NATIVE'
-});
-
-console.log('Join token:', newParticipant.joinToken);
-```
-
-### `getOrganizationFeatures()`
-
-Get all features enabled for your organization.
-
-```javascript
-const features = await boooply.getOrganizationFeatures();
-```
-
-### `hasFeature(featureType)`
-
-Check if a specific feature is enabled.
-
-```javascript
-const canUseAI = await boooply.hasFeature('AI_INTERVIEW');
-if (canUseAI) {
-  // Show AI interview option
-}
-```
-
-**Available Features:**
-- `AI_INTERVIEW`
-- `LIVE_TRANSCRIPTION`
-- `TRANSCRIPTION_SUMMARY`
-- `VIDEO_RECORDING`
-- `SCREENSHOT_CAPTURE`
-- `RATE_CANDIDATES`
-- `RATE_INTERVIEWERS`
-- `AI_NOTES`
-- `ANALYTICS`
-- `CUSTOM_BRANDING`
-
-### `updateMeeting(meetingCode, updates)`
-
-Update meeting details.
-
-```javascript
-await boooply.updateMeeting('abc-def-ghi', {
-  title: 'Updated Title',
-  isRecording: true
+const participant = mapGenericParticipant({
+  name: 'John Doe',
+  email: 'john@example.com',
+  externalUserId: '12345',
+  authProvider: 'YOUR_PLATFORM',
+  role: 'CANDIDATE',
 });
 ```
 
-### `endMeeting(meetingCode)`
+---
 
-End/cancel a meeting.
+## Platform Providers
 
-```javascript
-await boooply.endMeeting('abc-def-ghi');
-```
+For multi-tenant platforms that integrate Boooply for multiple organizations.
 
-## Platform Provider Methods
+### `BoooplyClient.createOrganizationApiKey(config, data)` — Static
 
-These methods are for multi-tenant platforms who integrate Boooply for multiple organizations.
-
-### `BoooplyClient.createOrganizationApiKey(config, data)` (Static)
-
-Create an organization-specific API key for a platform's sub-organization.
-
-**When to use**: When you're a multi-tenant platform and need to provision individual organizations with their own Boooply credentials.
+Creates an organization-specific API key. Call this from your backend when an organization connects to Boooply.
 
 ```javascript
-const { BoooplyClient } = require('@boooply/ai-interviews-sdk');
-
-// Platform backend calls this when an organization clicks "Connect to Boooply"
 const result = await BoooplyClient.createOrganizationApiKey(
   {
     baseUrl: 'https://api.meetings.boooply.com',
-    platformKey: process.env.BOOOPLY_PLATFORM_KEY  // Your platform's master key
+    platformKey: process.env.BOOOPLY_PLATFORM_KEY,  // your platform master key
   },
   {
-    userId: '12345',                    // User ID from your platform
-    userEmail: 'admin@organization.com',
+    userId: '12345',
+    userEmail: 'admin@acme.com',
     userName: 'Jane Admin',
-    organizationId: 'org_7234567890',   // Organization's snowflake ID
-    organizationName: 'Acme Corporation'
+    organizationId: 'org_7234567890',      // your platform's org ID
+    organizationName: 'Acme Corporation',
+    teamMembers: [                         // optional — import team
+      { email: 'bob@acme.com', name: 'Bob', role: 'ADMIN' },
+    ],
   }
 );
 
-// Store the returned API key for this organization
-console.log(result.apiKey);  // 'boooply_tenant_test_xxxxx' - unique per organization
+// Store result.apiKey for this organization
+console.log(result.apiKey);  // 'bply_tenant_xxxxx'
 ```
 
-**Config Parameters:**
-- `baseUrl` (string): Boooply API URL
-- `platformKey` (string): Your platform-level API key (contact Boooply to obtain)
+> **Security:** Only call this from your server. The platform key grants elevated privileges.
 
-**Data Parameters:**
-- `userId` (string): User ID from your platform
-- `userEmail` (string): User email
-- `userName` (string, optional): User name
-- `organizationId` (string): Organization's unique ID (snowflake/external ID, not internal DB ID)
-- `organizationName` (string, optional): Organization name
+---
 
-**Returns:**
-```javascript
-{
-  success: true,
-  apiKey: 'boooply_tenant_test_xxxxx',           // Store this for the organization
-  userId: '12345',
-  userEmail: 'admin@organization.com',
-  organizationId: 'org_7234567890',
-  organizationName: 'Acme Corporation',
-  meetingBaseUrl: 'https://meetings.boooply.com',
-  apiBaseUrl: 'https://api.meetings.boooply.com',
-  message: 'API key created successfully'
-}
-```
+## Webhooks
 
-**Security Note:** This method should only be called from your backend server, never from client-side code. The platform key grants elevated privileges.
+Boooply can send real-time webhook events to your server when interviews reach key milestones — transcript ready, evaluation complete, scores available, or recording ready.
 
-## TypeScript Support
+Webhooks are configured in your [Boooply dashboard](https://boooply.com) under **Integrations**, not through the SDK. See the [Webhooks documentation](https://docs.boooply.com/webhooks) for event payloads, signature verification, and setup instructions.
 
-The SDK includes JSDoc type definitions that work with TypeScript and modern IDEs:
-
-```typescript
-import { BoooplyClient, ParticipantData, Meeting } from 'boooply-ai-interviews-sdk';
-
-const client: BoooplyClient = new BoooplyClient({
-  apiKey: process.env.BOOOPLY_API_KEY!,
-  baseUrl: 'https://api.meetings.boooply.com'
-});
-
-const participant: ParticipantData = {
-  name: 'John Doe',
-  email: 'john@example.com',
-  role: 'CANDIDATE',
-  externalUserId: '12345',
-  authProvider: 'NATIVE'
-};
-```
+---
 
 ## Error Handling
 
 ```javascript
 try {
-  const meeting = await boooply.createMeeting({ ... });
+  const interview = await client.interviews.create({ ... });
 } catch (error) {
-  console.error('Failed to create meeting:', error.message);
-  console.error('Status:', error.status); // HTTP status code
-  console.error('Details:', error.data); // Response data
+  console.error(error.message);    // 'Boooply API 400: {...}'
+  console.error(error.status);     // 400
+  console.error(error.response);   // full axios response
 }
 ```
+
+Common errors:
+
+| Status | Meaning |
+|--------|---------|
+| `400` | Invalid parameters (check required fields) |
+| `401` | Invalid or expired API key |
+| `403` | Insufficient permissions |
+| `404` | Interview not found |
+| `429` | Rate limit exceeded |
+
+---
+
+## TypeScript Support
+
+The SDK ships with JSDoc type definitions that provide IntelliSense in TypeScript and modern editors:
+
+```typescript
+import {
+  BoooplyClient,
+  mapGoogleParticipant,
+} from '@boooply/ai-interviews-sdk';
+
+const client = new BoooplyClient({
+  apiKey: process.env.BOOOPLY_API_KEY!,
+  baseUrl: 'https://api.meetings.boooply.com',
+});
+```
+
+---
+
+## Migration from v1
+
+v2 introduces a namespaced API. All v1 methods still work but are deprecated.
+
+| v1 (deprecated) | v2 |
+|------------------|----|
+| `client.createAIInterview(data)` | `client.interviews.create({ type: 'ai', ... })` |
+| `client.createHumanInterview(data)` | `client.interviews.create({ type: 'human', ... })` |
+| `client.createTeamMeeting(data)` | `client.interviews.create({ type: 'team', ... })` |
+| `client.listInterviews()` | `client.interviews.list()` |
+| `client.getInterview(code)` | `client.interviews.get(code)` |
+| `client.cancelInterview(code)` | `client.interviews.cancel(code)` |
+| `client.rescheduleInterview(code, data)` | `client.interviews.reschedule(code, data)` |
+| `client.deleteInterview(code)` | `client.interviews.delete(code)` |
+| `client.addParticipant(code, data)` | `client.interviews.addParticipant(code, data)` |
+| `client.getTranscript(code)` | `client.interviews.getTranscript(code)` |
+| `client.getEvaluation(code)` | `client.interviews.getEvaluation(code)` |
+| `client.triggerAnalysis(code)` | `client.interviews.triggerAnalysis(code)` |
+| `client.generateJobDescription(data)` | `client.ai.generateJobDescription(data)` |
+| `client.getOrganization()` | `client.organization.get()` |
+
+---
 
 ## License
 

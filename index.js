@@ -118,8 +118,9 @@ class InterviewsAPI {
    * @param {string} data.jobRole - Job role/title
    * @param {Object} [data.candidate] - { name, email } — required for ai/human, ignored for team
    * @param {Array} [data.participants] - Array of { name, email, role } — required for human/team
-   * @param {string} [data.scheduledAt] - ISO 8601 datetime
+   * @param {string} [data.scheduledAt] - ISO 8601 datetime (required for FIXED mode)
    * @param {string} [data.schedulingMode] - IMMEDIATE | FIXED | CANDIDATE_PICKS
+   * @param {Array<{start: string, end: string}>} [data.availableSlots] - Time slots for CANDIDATE_PICKS mode (max 50, ISO 8601)
    * @param {number} [data.durationMinutes] - Duration (default: 30)
    * @param {string[]} [data.skills] - Skills to evaluate
    * @param {string} [data.seniority] - JUNIOR | MID | SENIOR | LEAD | PRINCIPAL
@@ -130,6 +131,7 @@ class InterviewsAPI {
    * @param {string} [data.candidateCV] - CV/resume text
    * @param {string[]} [data.questions] - Custom interview questions
    * @param {boolean} [data.aiGenerate] - Auto-generate questions with AI
+   * @param {string} [data.companyName] - Company name (defaults to organization name). Useful for agencies posting for multiple clients
    * @param {string} [data.evaluationFocus] - 'knowledge' | 'balanced' | 'communication' | 'problem_solving' | 'culture'
    * @param {string} [data.externalJobId] - External job/position ID from your ATS
    * @param {string[]} [data.agenda] - Agenda items (team meetings only)
@@ -281,6 +283,79 @@ class InterviewsAPI {
    */
   async triggerAnalysis(meetingCode) {
     const response = await this._http.post(`/api/integration/interviews/${meetingCode}/analyze`);
+    return response.data;
+  }
+
+  /**
+   * Get available time slots from a team member's Google Calendar connected in Boooply.
+   * Use this to pull interviewer availability without needing your own calendar integration.
+   *
+   * @param {Object} params
+   * @param {string} params.email - Team member's email address
+   * @param {number} [params.durationMinutes] - Slot duration in minutes (default: 30)
+   * @param {number} [params.days] - How many days ahead to look (default: 14, max: 30)
+   * @returns {Promise<Object>} { calendarConnected, slots: [{ start, end }], total }
+   *
+   * @example
+   * const { calendarConnected, slots } = await client.interviews.getAvailability({
+   *   email: 'interviewer@company.com',
+   *   durationMinutes: 45,
+   *   days: 7,
+   * });
+   *
+   * if (calendarConnected && slots.length > 0) {
+   *   // Use Boooply's calendar data
+   *   await client.interviews.create({
+   *     type: 'human',
+   *     schedulingMode: 'CANDIDATE_PICKS',
+   *     availableSlots: slots,
+   *     durationMinutes: 45,
+   *     ...
+   *   });
+   * } else {
+   *   // Fallback: use your own calendar integration to provide slots
+   * }
+   */
+  async getAvailability(params) {
+    if (!params.email) throw new Error('Boooply SDK: email is required for getAvailability');
+    const response = await this._http.get('/api/integration/availability', {
+      params: {
+        email: params.email,
+        duration: params.durationMinutes,
+        days: params.days,
+      },
+    });
+    return response.data;
+  }
+
+  /**
+   * Get busy blocks from a team member's Google Calendar connected in Boooply.
+   * Returns raw busy time ranges — useful if you want to compute availability yourself.
+   *
+   * @param {Object} params
+   * @param {string} params.email - Team member's email address
+   * @param {number} [params.days] - How many days ahead to look (default: 14, max: 30)
+   * @returns {Promise<Object>} { calendarConnected, busyBlocks: [{ start, end }], timezone, total }
+   *
+   * @example
+   * const { calendarConnected, busyBlocks, timezone } = await client.interviews.getBusyBlocks({
+   *   email: 'interviewer@company.com',
+   *   days: 7,
+   * });
+   *
+   * if (calendarConnected) {
+   *   // Compute your own available slots using the busy blocks
+   *   const mySlots = computeAvailability(busyBlocks, timezone);
+   * }
+   */
+  async getBusyBlocks(params) {
+    if (!params.email) throw new Error('Boooply SDK: email is required for getBusyBlocks');
+    const response = await this._http.get('/api/integration/busy-blocks', {
+      params: {
+        email: params.email,
+        days: params.days,
+      },
+    });
     return response.data;
   }
 }
