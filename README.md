@@ -90,6 +90,9 @@ A single unified method for creating AI interviews, human interviews, and team m
 | `workSetup` | `'REMOTE' \| 'ONSITE' \| 'HYBRID'` | No | Work arrangement |
 | `employmentType` | `'FULL_TIME' \| 'PART_TIME' \| 'CONTRACT'` | No | Employment type |
 | `evaluationFocus` | `string` | No | `'knowledge' \| 'balanced' \| 'communication' \| 'problem_solving' \| 'culture'` |
+| `title` | `string` | No | Custom interview title. Default: "AI Interview with {name} for {role} at {company}" |
+| `category` | `string` | No | Interview category: `SCREENING` \| `TECHNICAL` \| `BEHAVIORAL` \| `ASSIGNMENT` \| `CULTURAL` \| `CASE_STUDY` \| `PANEL` \| `FINAL` |
+| `stage` | `string` | No | Free-form stage label from your ATS (e.g., "Round 1", "Final Interview", "Phone Screen") |
 | `companyName` | `string` | No | Company name (defaults to your organization name). Useful for agencies posting for multiple clients |
 | `sendCandidateFeedback` | `boolean` | No | Send AI-generated feedback email to candidate after evaluation |
 | `externalJobId` | `string` | No | External job/position ID from your ATS |
@@ -419,6 +422,42 @@ const result = await client.interviews.addParticipant('Boooply-AI-1234567890', {
   ]
 });
 ```
+
+---
+
+#### `interviews.getParticipants(meetingCode)` — Get participants
+
+```javascript
+const { participants, total } = await client.interviews.getParticipants('Boooply-AI-1234567890');
+// participants = [{ id, name, email, role, joinToken, joinedAt, leftAt, isActive }]
+```
+
+---
+
+#### `interviews.removeParticipant(meetingCode, participantId)` — Remove participant
+
+```javascript
+await client.interviews.removeParticipant('Boooply-AI-1234567890', 'participant-uuid');
+```
+
+---
+
+#### `interviews.getRecording(meetingCode)` — Get recording
+
+Returns the video recording for a completed interview, with both a pre-signed URL (7-day expiry) and a stable API URL.
+
+```javascript
+const { recording } = await client.interviews.getRecording('Boooply-AI-1234567890');
+
+if (recording) {
+  console.log(recording.duration);    // seconds
+  console.log(recording.format);      // 'mp4'
+  console.log(recording.videoUrl);    // pre-signed S3 URL (expires in 7 days)
+  console.log(recording.videoApiUrl); // stable URL (generates fresh link on each request)
+}
+```
+
+> **Tip:** Store `videoApiUrl` — it always works. The `videoUrl` expires after 7 days.
 
 ---
 

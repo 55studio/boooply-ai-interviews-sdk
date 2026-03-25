@@ -2,6 +2,22 @@
 
 All notable changes to this project will be documented in this file.
 
+## [2.4.0] - 2026-03-24
+
+### Added
+- `title` parameter — custom interview title override
+- `category` parameter — interview category (SCREENING, TECHNICAL, BEHAVIORAL, ASSIGNMENT, CULTURAL, CASE_STUDY, PANEL, FINAL)
+- `stage` parameter — free-form stage label from ATS (e.g., "Round 1", "Final Interview")
+- Auto-generated interview titles: "AI Interview with {name} for {role} at {company}"
+- Source tracking: `source`, `sourceId`, `sourcePlatform` on interview responses for platform API filtering
+
+## [2.3.0] - 2026-03-24
+
+### Added
+- `interviews.getParticipants(meetingCode)` — Get all participants for an interview
+- `interviews.removeParticipant(meetingCode, participantId)` — Remove a participant
+- `interviews.getRecording(meetingCode)` — Get video recording with presigned + stable URLs
+
 ## [2.2.0] - 2026-03-24
 
 ### Added

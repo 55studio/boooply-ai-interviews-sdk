@@ -71,7 +71,7 @@ class BoooplyClient {
   /**
    * Create organization-specific API key (server-to-server)
    * @param {Object} config - { baseUrl, platformKey }
-   * @param {Object} data - { userId, userEmail, userName?, organizationId, organizationName?, teamMembers? }
+   * @param {Object} data - { userId, userEmail, userName?, organizationId, organizationName? }
    */
   static async createOrganizationApiKey(config, data) {
     if (!config.baseUrl) throw new Error('Boooply SDK: baseUrl is required');
@@ -131,6 +131,9 @@ class InterviewsAPI {
    * @param {string} [data.candidateCV] - CV/resume text
    * @param {string[]} [data.questions] - Custom interview questions
    * @param {boolean} [data.aiGenerate] - Auto-generate questions with AI
+   * @param {string} [data.title] - Custom title override. Default: "AI Interview with {name} for {role} at {company}"
+   * @param {string} [data.category] - Interview category: SCREENING, TECHNICAL, BEHAVIORAL, ASSIGNMENT, CULTURAL, CASE_STUDY, PANEL, FINAL
+   * @param {string} [data.stage] - Free-form stage label from your ATS (e.g., "Round 1", "Final Interview", "Phone Screen")
    * @param {string} [data.companyName] - Company name (defaults to organization name). Useful for agencies posting for multiple clients
    * @param {string} [data.evaluationFocus] - 'knowledge' | 'balanced' | 'communication' | 'problem_solving' | 'culture'
    * @param {string} [data.externalJobId] - External job/position ID from your ATS
@@ -223,6 +226,43 @@ class InterviewsAPI {
    */
   async addParticipant(meetingCode, data) {
     const response = await this._http.post(`/api/integration/interviews/${meetingCode}/participants`, data);
+    return response.data;
+  }
+
+  /**
+   * Get participants for an interview
+   * @param {string} meetingCode
+   * @returns {Promise<Object>} { participants: [{ id, name, email, role, joinToken, joinedAt, leftAt, isActive }], total }
+   */
+  async getParticipants(meetingCode) {
+    const response = await this._http.get(`/api/integration/interviews/${meetingCode}/participants`);
+    return response.data;
+  }
+
+  /**
+   * Remove a participant from an interview
+   * @param {string} meetingCode
+   * @param {string} participantId
+   */
+  async removeParticipant(meetingCode, participantId) {
+    const response = await this._http.delete(`/api/integration/interviews/${meetingCode}/participants/${participantId}`);
+    return response.data;
+  }
+
+  /**
+   * Get recording for a completed interview
+   * @param {string} meetingCode
+   * @returns {Promise<Object>} { recording: { duration, format, videoUrl, videoApiUrl, createdAt } | null }
+   *
+   * @example
+   * const { recording } = await client.interviews.getRecording('Boooply-AI-123');
+   * if (recording) {
+   *   console.log(recording.videoUrl);    // presigned S3 URL (expires in 7 days)
+   *   console.log(recording.videoApiUrl); // stable URL (always works)
+   * }
+   */
+  async getRecording(meetingCode) {
+    const response = await this._http.get(`/api/integration/interviews/${meetingCode}/recording`);
     return response.data;
   }
 
